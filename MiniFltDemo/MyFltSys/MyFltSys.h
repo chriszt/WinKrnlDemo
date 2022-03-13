@@ -4,6 +4,38 @@
 #include <fltKernel.h>
 
 //#define MINISPY_PORT_NAME               L"\\MyFltPort"
+#define FILE_IMAGE_TAG 'gmif'
+
+NTKERNELAPI
+UCHAR *
+PsGetProcessImageFileName (PEPROCESS Process);
+
+typedef NTSTATUS(*pfnZwQueryInformationProcess) (
+    __in HANDLE ProcessHandle,
+    __in PROCESSINFOCLASS ProcessInformationClass,
+    __out_bcount(ProcessInformationLength) PVOID ProcessInformation,
+    __in ULONG ProcessInformationLength,
+    __out_opt PULONG ReturnLength
+    );
+
+pfnZwQueryInformationProcess gpfnZwQueryInformationProcess = NULL;
+
+NTSTATUS
+Sym2Dev (PWCHAR symName, PWCHAR devName, USHORT devNameLen);
+
+NTSTATUS
+QueryInstDir (void);
+
+NTSTATUS
+GetFilePathByProcessId(
+    ULONG pid,
+    PUNICODE_STRING *pusFilePath
+    );
+
+BOOLEAN
+IsTrustedAccess (
+    _Inout_ PFLT_CALLBACK_DATA Data
+    );
 
 NTSTATUS
 DriverEntry (
@@ -25,6 +57,44 @@ PreCreate (
 
 FLT_POSTOP_CALLBACK_STATUS
 PostCreate (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _In_opt_ PVOID CompletionContext,
+    _In_ FLT_POST_OPERATION_FLAGS Flags
+    );
+
+FLT_PREOP_CALLBACK_STATUS
+PreOperation (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Outptr_result_maybenull_ PVOID *CompletionContext
+    );
+
+FLT_POSTOP_CALLBACK_STATUS
+PostReadWrite (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _In_opt_ PVOID CompletionContext,
+    _In_ FLT_POST_OPERATION_FLAGS Flags
+    );
+
+FLT_PREOP_CALLBACK_STATUS
+PreSetInfo (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Outptr_result_maybenull_ PVOID *CompletionContext
+    );
+
+FLT_POSTOP_CALLBACK_STATUS
+PostSetInfo (
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _In_opt_ PVOID CompletionContext,
+    _In_ FLT_POST_OPERATION_FLAGS Flags
+    );
+
+FLT_POSTOP_CALLBACK_STATUS
+PostCleanup (
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_opt_ PVOID CompletionContext,
@@ -88,6 +158,11 @@ InstTearDownComplete (
 
 const FLT_OPERATION_REGISTRATION gCallbacks[] = {
     { IRP_MJ_CREATE, 0, PreCreate, PostCreate },
+    { IRP_MJ_READ, 0, PreOperation, PostReadWrite },
+    { IRP_MJ_WRITE, 0, PreOperation, PostReadWrite },
+    { IRP_MJ_SET_INFORMATION, FLTFL_OPERATION_REGISTRATION_SKIP_PAGING_IO, 
+        PreSetInfo, PostSetInfo },
+    { IRP_MJ_CLEANUP, 0, PreOperation, PostCleanup },
     
     { IRP_MJ_OPERATION_END }
 };
