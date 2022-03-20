@@ -75,7 +75,7 @@ QueryInstDir (void)
     HANDLE hInstDirKey = NULL;
     UNICODE_STRING usInstDirRegPath = 
         RTL_CONSTANT_STRING(L"\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Install\\QianKun-EDR-Agent");
-    UNICODE_STRING usValueName = RTL_CONSTANT_STRING(L"InstalDir");
+    UNICODE_STRING usValueName = RTL_CONSTANT_STRING(L"InstallDir");
     OBJECT_ATTRIBUTES oa = { 0 };
     ULONG ulRetLen = 0;
     WCHAR wszInstRootBuf[260] = { 0 };
@@ -303,6 +303,7 @@ exit:
         FltReleaseFileNameInformation(nameInfo);
         nameInfo = NULL;
     }
+
     return bTrusted;
 }
 
@@ -314,9 +315,9 @@ DriverEntry (
 {
     NTSTATUS status = STATUS_SUCCESS;
     UNICODE_STRING usZwQueryInformationProcess = RTL_CONSTANT_STRING(L"ZwQueryInformationProcess");
-    //PSECURITY_DESCRIPTOR sd;
-    //OBJECT_ATTRIBUTES oa;
-    //UNICODE_STRING usCommPort;
+    PSECURITY_DESCRIPTOR sd;
+    OBJECT_ATTRIBUTES oa;
+    UNICODE_STRING usCommPort;
     UNREFERENCED_PARAMETER(RegistryPath);
 
     KdPrint(("MyFltSys!DriverEntry: ENTERED\n"));
@@ -353,32 +354,46 @@ DriverEntry (
     }
     KdPrint(("MyFltSys!DriverEntry: Start Filtering SUCCEED\n"));
 
-    //status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
-    //if (!NT_SUCCESS(status)) {
-    //    PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("MyFltSys!DriverEntry: Build SD Failed:(\n"));
-    //    goto exit;
-    //}
-    //PT_DBG_PRINT(PTDBG_TRACE_ROUTINES, ("MyFltSys!DriverEntry: Build SD Succeed:)\n"));
+    status = FltBuildDefaultSecurityDescriptor(&sd, FLT_PORT_ALL_ACCESS);
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("MyFltSys!DriverEntry: Build SD FAILED (0x%08x)\n", status));
+        goto exit;
+    }
+    KdPrint(("MyFltSys!DriverEntry: Build SD SUCCEED\n"));
 
-    //RtlInitUnicodeString(&usCommPort, MINISPY_PORT_NAME);
 
-    //InitializeObjectAttributes(&oa, 
-    //                           &usCommPort,
-    //                           OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, 
-    //                           NULL,
-    //                           sd);
-    //status = FltCreateCommunicationPort(
-    //            gFltHdr, 
-    //            &gSrvPort,
-    //            &oa,
-    //            NULL,
-    //            MiniConn,
-    //            MiniDisConn,
-    //            MiniMsg,
-    //            1);
+    RtlInitUnicodeString(&usCommPort, MINISPY_PORT_NAME);
+
+    InitializeObjectAttributes(
+        &oa, 
+        &usCommPort,
+        OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, 
+        NULL,
+        sd);
+
+    status = FltCreateCommunicationPort(
+                 gFilter,
+                 &gSrvPort,
+                 &oa,
+                 NULL,
+                 MiniConn,
+                 MiniDisConn,
+                 MiniMsg,
+                 1);
+    FltFreeSecurityDescriptor(sd);
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("MyFltSys!DriverEntry: Create Comm Port FAILED (0x%08x)\n", status));
+        goto exit;
+    }
+
+    KdPrint(("MyFltSys!DriverEntry: Create Comm Port SUCCEED\n"));
 
 exit:
     if (!NT_SUCCESS(status)) {
+        if (NULL != gSrvPort) {
+            FltCloseCommunicationPort(gSrvPort);
+            gSrvPort = NULL;
+        }
         if (NULL != gFilter) {
             FltUnregisterFilter(gFilter);
             gFilter = NULL;
@@ -406,16 +421,19 @@ PreCreate (
     )
 {
     FLT_PREOP_CALLBACK_STATUS fltStatus = FLT_PREOP_SUCCESS_WITH_CALLBACK;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
 
+    PAGED_CODE();
+
     //KdPrint(("MyFltSys!PreCreate: ENTERED\n"));
     
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    } else {
-        fltStatus = FLT_PREOP_COMPLETE;
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //} else {
+    //    fltStatus = FLT_PREOP_COMPLETE;
+    //}
 
     return fltStatus;
 }
@@ -429,18 +447,19 @@ PostCreate (
     )
 {
     FLT_POSTOP_CALLBACK_STATUS fltStatus = FLT_POSTOP_FINISHED_PROCESSING;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
     UNREFERENCED_PARAMETER(Flags);
 
     //KdPrint(("MyFltSys!PostCreate: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    }
-    else {
-        // TODO: Do Nothing
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //}
+    //else {
+    //    // TODO: Do Nothing
+    //}
     
     return fltStatus;
 }
@@ -453,16 +472,19 @@ PreOperation (
     )
 {
     FLT_PREOP_CALLBACK_STATUS fltStatus = FLT_PREOP_SUCCESS_WITH_CALLBACK;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
 
+    PAGED_CODE();
+
     //KdPrint(("MyFltSys!PreOperation: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    } else {
-        fltStatus = FLT_PREOP_COMPLETE;
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //} else {
+    //    fltStatus = FLT_PREOP_COMPLETE;
+    //}
     
     return fltStatus;
 }
@@ -476,18 +498,19 @@ PostReadWrite (
     )
 {
     FLT_POSTOP_CALLBACK_STATUS fltStatus = FLT_POSTOP_FINISHED_PROCESSING;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
     UNREFERENCED_PARAMETER(Flags);
 
     //KdPrint(("MyFltSys!PostReadWrite: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    }
-    else {
-        // TODO: Do Nothing
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //}
+    //else {
+    //    // TODO: Do Nothing
+    //}
 
     return fltStatus;
 }
@@ -500,17 +523,20 @@ PreSetInfo (
     )
 {
     FLT_PREOP_CALLBACK_STATUS fltStatus = FLT_PREOP_SUCCESS_WITH_CALLBACK;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
 
+    PAGED_CODE();
+
     //KdPrint(("MyFltSys!PreSetInfo: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    }
-    else {
-        fltStatus = FLT_PREOP_COMPLETE;
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //}
+    //else {
+    //    fltStatus = FLT_PREOP_COMPLETE;
+    //}
 
     return fltStatus;
 }
@@ -524,18 +550,19 @@ PostSetInfo (
     )
 {
     FLT_POSTOP_CALLBACK_STATUS fltStatus = FLT_POSTOP_FINISHED_PROCESSING;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
     UNREFERENCED_PARAMETER(Flags);
 
     //KdPrint(("MyFltSys!PostSetInfo: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    }
-    else {
-        // TODO: Do Nothing
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //}
+    //else {
+    //    // TODO: Do Nothing
+    //}
 
     return fltStatus;
 }
@@ -549,18 +576,19 @@ PostCleanup(
     )
 {
     FLT_POSTOP_CALLBACK_STATUS fltStatus = FLT_POSTOP_FINISHED_PROCESSING;
+    UNREFERENCED_PARAMETER(Data);
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(CompletionContext);
     UNREFERENCED_PARAMETER(Flags);
 
     //KdPrint(("MyFltSys!PostCleanup: ENTERED\n"));
 
-    if (IsTrustedAccess(Data)) {
-        // TODO: Do Nothing
-    }
-    else {
-        // TODO: Do Nothing
-    }
+    //if (IsTrustedAccess(Data)) {
+    //    // TODO: Do Nothing
+    //}
+    //else {
+    //    // TODO: Do Nothing
+    //}
 
     return fltStatus;
 }
@@ -572,14 +600,20 @@ Unload (
 {
     UNREFERENCED_PARAMETER(Flags);
 
+    PAGED_CODE();
+
     KdPrint(("MyFltSys!Unload: ENTERED\n"));
+
+    if (NULL != gSrvPort) {
+        FltCloseCommunicationPort(gSrvPort);
+        gSrvPort = NULL;
+    }
 
     if (NULL != gFilter) {
         FltUnregisterFilter(gFilter);
         gFilter = NULL;
     }
 
-    KdPrint(("MyFltSys!Unload: FINISHED\n"));
     return STATUS_SUCCESS;
 }
 
@@ -596,6 +630,8 @@ InstSetup (
     UNREFERENCED_PARAMETER(VolumeDeviceType);
     UNREFERENCED_PARAMETER(VolumeFilesystemType);
 
+    PAGED_CODE();
+
     KdPrint(("MyFltSys!InstSetup: ENTERED\n"));
 
     return STATUS_SUCCESS;
@@ -609,6 +645,8 @@ InstQueryTearDown (
 {
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(Flags);
+
+    PAGED_CODE();
 
     KdPrint(("MyFltSys!InstQueryTearDown: ENTERED\n"));
 
@@ -624,6 +662,8 @@ InstTearDownStart (
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(Reason);
 
+    PAGED_CODE();
+
     KdPrint(("MyFltSys!InstTearDownStart: ENTERED\n"));
 }
 
@@ -636,38 +676,72 @@ InstTearDownComplete (
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(Reason);
 
+    PAGED_CODE();
+    
     KdPrint(("MyFltSys!InstTearDownComplete: ENTERED\n"));
 }
 
-//NTSTATUS
-//MiniConn (
-//    _In_ PFLT_PORT ClientPort,
-//    _In_opt_ PVOID ServerPortCookie,
-//    _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
-//    _In_ ULONG SizeOfContext,
-//    _Outptr_result_maybenull_ PVOID *ConnectionPortCookie
-//    )
-//{
-//
-//}
-//
-//VOID
-//MiniDisConn(
-//    _In_opt_ PVOID ConnectionCookie
-//    )
-//{
-//
-//}
-//
-//NTSTATUS
-//MiniMsg (
-//    _In_opt_ PVOID PortCookie,
-//    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
-//    _In_ ULONG InputBufferLength,
-//    _Out_writes_bytes_to_opt_(OutputBufferLength, *ReturnOutputBufferLength) PVOID OutputBuffer,
-//    _In_ ULONG OutputBufferLength,
-//    _Out_ PULONG ReturnOutputBufferLength
-//    )
-//{
-//
-//}
+NTSTATUS
+MiniConn (
+    _In_ PFLT_PORT ClientPort,
+    _In_opt_ PVOID ServerPortCookie,
+    _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
+    _In_ ULONG SizeOfContext,
+    _Outptr_result_maybenull_ PVOID *ConnectionPortCookie
+    )
+{
+    UNREFERENCED_PARAMETER(ServerPortCookie);
+    UNREFERENCED_PARAMETER(ConnectionContext);
+    UNREFERENCED_PARAMETER(SizeOfContext);
+    UNREFERENCED_PARAMETER(ConnectionPortCookie);
+
+    PAGED_CODE();
+
+    KdPrint(("MyFltSys!MiniConn: ENTERED\n"));
+
+    if (NULL != ClientPort) {
+        gCliPort = ClientPort;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+VOID
+MiniDisConn(
+    _In_opt_ PVOID ConnectionCookie
+    )
+{
+    UNREFERENCED_PARAMETER(ConnectionCookie);
+
+    PAGED_CODE();
+
+    KdPrint(("MyFltSys!MiniDisConn: ENTERED\n"));
+
+    FltCloseClientPort(gFilter, &gCliPort);
+    gCliPort = NULL;
+}
+
+NTSTATUS
+MiniMsg (
+    _In_opt_ PVOID PortCookie,
+    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_writes_bytes_to_opt_(OutputBufferLength, *ReturnOutputBufferLength) PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG ReturnOutputBufferLength
+    )
+{
+    UNREFERENCED_PARAMETER(PortCookie);
+    UNREFERENCED_PARAMETER(OutputBuffer);
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+
+    UNREFERENCED_PARAMETER(InputBuffer);
+    UNREFERENCED_PARAMETER(InputBufferLength);
+    UNREFERENCED_PARAMETER(ReturnOutputBufferLength);
+
+    PAGED_CODE();
+
+    KdPrint(("MyFltSys!MiniMsg: ENTERED\n"));
+
+    return STATUS_SUCCESS;
+}

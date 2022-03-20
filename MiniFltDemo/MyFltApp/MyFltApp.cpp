@@ -1,20 +1,109 @@
-﻿// MyFltApp.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
-
+﻿#include "MyFltApp.h"
 #include <iostream>
+#include <fltUser.h>
 
-int main()
+#pragma comment(lib, "fltLib.lib")
+
+MyFltApp::MyFltApp()
 {
-    std::cout << "Hello World!\n";
+    m_hDll = NULL;
 }
 
-// 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
-// 调试程序: F5 或调试 >“开始调试”菜单
+MyFltApp::~MyFltApp()
+{
+    m_hDll = NULL;
+}
 
-// 入门使用技巧: 
-//   1. 使用解决方案资源管理器窗口添加/管理文件
-//   2. 使用团队资源管理器窗口连接到源代码管理
-//   3. 使用输出窗口查看生成输出和其他消息
-//   4. 使用错误列表窗口查看错误
-//   5. 转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
-//   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
+void
+MyFltApp::SendMsg(CMD_MSG msg)
+{
+    
+}
+
+bool
+MyFltApp::LoadDll(void)
+{
+    return true;
+}
+
+int
+main (void)
+{
+    char chIn;
+    HANDLE hPort = INVALID_HANDLE_VALUE;
+
+    while (true) {
+        std::cin >> chIn;
+        if (chIn == 'e' || chIn == 'E') {
+            DWORD dwRet = 0;
+
+            dwRet = FilterConnectCommunicationPort(
+                        MINISPY_PORT_NAME,
+                        0,
+                        NULL,
+                        0,
+                        NULL,
+                        &hPort);
+            if (S_OK != dwRet) {
+                fprintf(stderr, "Enable FAILED (0x%08x)\n", dwRet);
+                break;
+            }
+
+            std::cout << "Enable" << std::endl;
+
+        } else if (chIn == 'd' || chIn == 'D') {
+            
+            CloseHandle(hPort);
+            hPort = INVALID_HANDLE_VALUE;
+            std::cout << "Disable" << std::endl;
+
+        } else if (chIn == 'p' || chIn == 'P') {
+            HRESULT hRet = 0;
+            CMD_MSG msg = { EM_PASS };
+            DWORD dwRetBytes = 0;
+
+            hRet = FilterSendMessage(
+                       hPort,
+                       &msg,
+                       sizeof(CMD_MSG),
+                       NULL,
+                       0,
+                       &dwRetBytes);
+            if (S_OK != hRet) {
+                fprintf(stderr, "Send Command FAILED (0x%08x)\n", hRet);
+                break;
+            }
+            
+            std::cout << "Send PASS Command" << std::endl;
+
+        } else if (chIn == 'b' || chIn == 'B') {
+            HRESULT hRet = 0;
+            CMD_MSG msg = { EM_PASS };
+            DWORD dwRetBytes = 0;
+
+            hRet = FilterSendMessage(
+                hPort,
+                &msg,
+                sizeof(CMD_MSG),
+                NULL,
+                0,
+                &dwRetBytes);
+            if (S_OK != hRet) {
+                fprintf(stderr, "Send Command FAILED (0x%08x)\n", hRet);
+                break;
+            }
+
+            std::cout << "Send BLOCK Command" << std::endl;
+
+        } else if (chIn == 'q' || chIn == 'Q') {
+            
+            std::cout << "Quit" << std::endl;
+
+            break;
+        } else {
+            std::cout << "Unknow" << std::endl;
+        }
+    }
+    
+    return 0;
+}

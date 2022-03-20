@@ -3,8 +3,8 @@
 
 #include <fltKernel.h>
 
-//#define MINISPY_PORT_NAME               L"\\MyFltPort"
-#define FILE_IMAGE_TAG 'gmif'
+#define MINISPY_PORT_NAME    L"\\MyFltPort"
+#define FILE_IMAGE_TAG       'gmif'
 
 NTKERNELAPI
 UCHAR *
@@ -132,29 +132,29 @@ InstTearDownComplete (
     _In_ FLT_INSTANCE_TEARDOWN_FLAGS Reason
     );
 
-//NTSTATUS
-//MiniConn (
-//    _In_ PFLT_PORT ClientPort,
-//    _In_opt_ PVOID ServerPortCookie,
-//    _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
-//    _In_ ULONG SizeOfContext,
-//    _Outptr_result_maybenull_ PVOID *ConnectionPortCookie
-//    );
-//
-//VOID
-//MiniDisConn(
-//    _In_opt_ PVOID ConnectionCookie
-//    );
-//
-//NTSTATUS
-//MiniMsg (
-//    _In_opt_ PVOID PortCookie,
-//    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
-//    _In_ ULONG InputBufferLength,
-//    _Out_writes_bytes_to_opt_(OutputBufferLength, *ReturnOutputBufferLength) PVOID OutputBuffer,
-//    _In_ ULONG OutputBufferLength,
-//    _Out_ PULONG ReturnOutputBufferLength
-//    );
+NTSTATUS
+MiniConn (
+    _In_ PFLT_PORT ClientPort,
+    _In_opt_ PVOID ServerPortCookie,
+    _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
+    _In_ ULONG SizeOfContext,
+    _Outptr_result_maybenull_ PVOID *ConnectionPortCookie
+    );
+
+VOID
+MiniDisConn(
+    _In_opt_ PVOID ConnectionCookie
+    );
+
+NTSTATUS
+MiniMsg (
+    _In_opt_ PVOID PortCookie,
+    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_writes_bytes_to_opt_(OutputBufferLength, *ReturnOutputBufferLength) PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG ReturnOutputBufferLength
+    );
 
 const FLT_OPERATION_REGISTRATION gCallbacks[] = {
     { IRP_MJ_CREATE, 0, PreCreate, PostCreate },
