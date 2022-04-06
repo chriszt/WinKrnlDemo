@@ -72,7 +72,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDrvObj, PUNICODE_STRING pRegPath)
 
     KdPrint(("Sym2Dev!DriverEntry: ENTERED\n"));
 
-    status = Sym2Dev();
+    //status = Sym2Dev();
 
     KdPrint(("Sym2Dev!DriverEntry: FINISHED\n"));
     return status;
